@@ -1,0 +1,204 @@
+---
+title: "Analysis of Global Reading Proficiency and Life Expectancy"
+subtitle: "presents an analysis of the reading proficiency across various countries using data from UNICEF indicators."
+author: "Bijoy Krishna Kalita"
+date: "2024-04-25"
+format:
+  html:
+    theme: sketchy
+    toc: true
+    
+execute: 
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup, include=FALSE}
+
+#libraries
+library(tidyverse)
+library(ggplot2)
+library(maps)
+library(dplyr)
+library(countrycode)
+library(plotly)
+
+#data
+indicator1 <- read.csv('unicef_indicator_1.csv')
+indicator2 <- read.csv('unicef_indicator_2.csv')
+metadata <- read.csv('unicef_metadata.csv')
+
+#transformations
+indicator <- bind_rows(indicator1, indicator2)
+indicator_2018 <- indicator1 %>%
+  filter(time_period == 2018)
+```
+
+## Global Reading Proficiency Map
+**Figure 1:** 
+
+
+> **Overview:** This map provides an intuitive visual representation of reading proficiency across the globe for 2018. Each country's color intensity—from pale to deep orange—reflects its literacy rates, offering a quick visual assessment of educational strengths and needs.
+
+#### Key Insights:
+- **Global Leaders:** Countries in dark orange have achieved exemplary educational outcomes.
+- **Areas for Improvement:** Light orange shades pinpoint regions needing urgent educational reforms and support.
+
+This visualization is essential for identifying disparities and targeting interventions effectively, shaping policies that focus on underserved areas.
+
+
+```{r}
+world_map <- map_data("world")
+indicator_map <- full_join(world_map, indicator_2018, by = c("region" = "country"), relationship = "many-to-many")
+# World Map Chart with more detailed aesthetics
+ggplot(data = indicator_map, aes(x = long, y = lat, group = group, fill = obs_value)) +
+  geom_polygon(color = "white") +
+  scale_fill_gradient(low = "#ffb671", high = "#f88501", na.value = "#ffd7b7") +
+  
+  #scale_fill_viridis_c(option = "C", direction = -1, name = "Reading Proficiency (%)") +
+  labs(
+    title = "Global Reading Proficiency at Lower Secondary Level",
+    subtitle = "percentage of reading proficiency for the year 2018 is shown",
+    x = "",
+    y = "",
+    ) +
+  theme_classic() +
+  theme(legend.position = "bottom")
+```
+
+
+## Top 10 Countries in Reading Proficiency
+**Figure 2:** 
+
+**Detailed Analysis:**
+Each bar represents a country, uniquely colored to highlight its position among global leaders in literacy. This chart does not just celebrate high achievers but also serves as a motivation for other nations to enhance their educational strategies.
+
+#### Top Performers:
+- **Countries Exceeding 80% Proficiency:** These are benchmark nations where a significant majority of students reach basic reading competencies by the end of lower secondary school.
+
+The selection of vibrant colors enhances visual appeal and draws attention to each country's educational excellence.
+
+
+```{r}
+top_countries <- indicator1 %>%
+  filter(sex == "Total", obs_value > 80 & obs_value < 99) %>% 
+  arrange(desc(obs_value)) %>%
+  slice_head(n = 10)
+
+
+
+custom_colors <- c("#974700", "#ff7f0e", "#f88501", "#f7a156", "#e49a59", "#f0b27d", "#ffa775", "#f8bc99", "#f8bc99", "#f8bc99" ) #defining custom color sets first
+ggplot(top_countries, aes(x = reorder(country, obs_value), y = obs_value, fill = country)) +
+  geom_col(show.legend = FALSE, width = 0.5) +
+ # coord_flip() +
+  scale_y_continuous(limits = c(82, 90), breaks = seq(82, 90, by = 1),  oob = scales::oob_squish) +
+  
+ 
+  labs(title = "Showing Top 10 Countries by Reading Proficiency", x = "Countries", y = "Proportion (%)",
+       subtitle = "These are the nations where more than 80% of students graduate from lower secondary school with at least a basic reading competency. ") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  scale_fill_manual(values = custom_colors)
+```
+
+## Gender Disparities in Reading Proficiency
+**Figure 3:**
+
+> **Context:** This scatter plot breaks down reading proficiency by gender, with orange for males and teal for females, across various countries. Linear models reveal trends and disparities.
+
+#### Observations:
+- **Visible Trends:** Highlighting gender-specific educational achievement and gaps.
+- **Policy Implications:** The data prompts deeper investigations into socio-cultural and economic factors influencing these disparities, guiding targeted educational policies.
+
+This visualization is a crucial tool for understanding and addressing gender inequalities in global education.
+
+
+
+```{r}
+scatter_data <- indicator1 %>%
+  group_by(country, sex) %>%
+  filter(any(obs_value > 50)) %>%
+  slice_head(n = 25)
+
+ggplot(scatter_data, aes(x = country, y = obs_value, color = sex)) +
+  geom_point(alpha = 50, size = 3.8, color = "orange") +
+  #geom_smooth(method = "lm") +
+  #geom_smooth(method = "lm", se = TRUE, color = "red", linetype = "solid", size = 2) +
+  
+  geom_smooth(method = "lm", aes(group = sex), se = FALSE, 
+              color = "darkorange", size = 1, linetype = "solid") +
+  
+  labs(title = "Reading Proficiency",
+       subtitle = "showing something...............",
+       x = "Countries", y = "Reading Proficiency (%)") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "",
+        panel.grid.major = element_blank(),   
+    panel.grid.minor = element_blank(),  
+    panel.background = element_blank())
+```
+
+
+## Life Expectancy Trends (2010-2019)
+**Figure 4:** 
+
+
+**Examination of Health Outcomes:**
+This line graph provides a detailed analysis of life expectancy over a decade in selected developed countries. Each line's unique color aids in tracking the health progress or decline of a specific country.
+
+#### Health Insights:
+- **Correlation with Education:** Insights into how educational levels potentially influence health outcomes.
+- **Yearly Trends:** Detailed observations of each country's health improvements or setbacks over the years.
+
+This graph is not only about health metrics but also about understanding the broader narrative of societal well-being tied to education.
+
+
+
+
+```{r}
+country_list <- c("Australia", "Canada", "France", "Germany", "Italy", 
+                         "Japan", "New Zealand", "Norway", "United Kingdom", "United States")
+country_colors <- c("Australia" = "#E41A1C", "Canada" = "#377EB8", "France" = "#4DAF4A", 
+                    "Germany" = "#984EA3", "Italy" = "#FF7F00", "Japan" = "#FFFF33",
+                    "New Zealand" = "#A65628", "Norway" = "#F781BF", "United Kingdom" = "#999999",
+                    "United States" = "#66C2A5")
+
+
+filtered_metadata <- metadata %>%
+  filter(country %in% country_list, time_period >= 2010 & time_period <= 2020) %>%
+  select(country, time_period, Life_expectancy_at_birth_total_years)
+
+filtered_metadata$time_period <- as.integer(filtered_metadata$time_period)
+
+
+
+ggplot(filtered_metadata, aes(x = time_period, y = Life_expectancy_at_birth_total_years, group = country, color = country)) +
+  geom_line(size = 0.8) +  
+  geom_point() + 
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(min(filtered_metadata$time_period), max(filtered_metadata$time_period), 1)) +
+  labs(
+    title = "Life Expectancy Trends from 2010 to 2019",
+    subtitle = "Comparison among Selected Developed Countries",
+    x = "Year",
+    y = "Life Expectancy at Birth (Years)"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(face = "italic", size = 12),
+    axis.text.x = element_text(angle = 0, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(face = "bold", size = 12)
+  )
+```
+
+## Conclusion & Recommendation
+Together, these visualizations form a narrative that links educational achievement with broader socio-economic outcomes, such as health and quality of life. By comparing countries and highlighting disparities in education and health, your story emphasizes the need for a focused approach to improve educational systems and healthcare policies globally, suggesting that investment in education could be directly beneficial to societal health and longevity.
+
+These insights derived from your data not only inform policymakers and educators but also engage the general public in understanding the critical challenges and achievements in global education and health.
+
+
+
